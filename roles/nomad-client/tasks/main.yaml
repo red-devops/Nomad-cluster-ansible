@@ -1,0 +1,78 @@
+---
+# Task file for nomad client
+- name: Get instance name
+  command: aws ec2 describe-instances --region {{ region }} --filters "Name=private-ip-address,Values={{ private_ip_address }}" --query 'Reservations[].Instances[].Tags[?Key==`Name`].Value' --output text
+  register: instance_name_out
+  
+- name: Set instance name
+  set_fact:
+    node_name: "{{ instance_name_out.stdout }}"
+
+- name: Render script
+  template:
+    src: "{{ item }}"
+    dest: "{{ item }}"
+    mode: "{{ mode }}"
+  delegate_to: localhost
+  with_items:
+    - "get_keygen.sh"
+    - "get_nomad_token.sh"
+
+- name: Get keygen form vault
+  command: "./get_keygen.sh"
+  register: keygen_output
+  delegate_to: localhost
+
+- name: Set keygen variable
+  set_fact:
+    keygen: "{{ keygen_output.stdout | from_json | json_query('data.data.key') }}"
+
+- name: Get nomad token
+  command: "./get_nomad_token.sh"
+  register: nomad_token_output
+  delegate_to: localhost
+
+- name: Set nomad token variable
+  set_fact:
+    nomad_token: "{{ nomad_token_output.stdout }}"
+  
+- name: Get Vault Server address
+  command: aws ec2 describe-instances --region {{ region }} --filters "Name=tag:Name,Values=vault-{{ env }}" --query 'Reservations[].Instances[].PrivateIpAddress' --output text
+  register: vault_server_ip_output
+
+- name: Set Vault Server address
+  set_fact:
+    vault_server_ip: "{{ vault_server_ip_output.stdout }}"
+
+- name: Install nomad
+  unarchive:
+    src: "{{ item }}"
+    dest: "{{ nomad_bin_home }}"
+    remote_src: yes
+    owner: "{{ user }}"
+    group: "{{ group }}"
+  with_items:
+    - "https://releases.hashicorp.com/nomad/1.6.0/nomad_1.6.0_linux_amd64.zip"
+  
+- name: Copy configuration
+  template:
+    src: "nomad_config.hcl"
+    dest: "{{ nomad_config_home }}/nomad_config.hcl"
+    owner: "{{ user }}"
+    group: "{{ group }}"
+    mode: "{{ mode }}"
+
+- name: Copy systemd nomad.service
+  template:
+    src: "nomad.service"
+    dest: "/usr/lib/systemd/system/nomad.service"
+    owner: "{{ user }}"
+    group: "{{ group }}"
+    mode: "{{ mode }}"
+  
+- name: Start Nomad agent
+  systemd:
+    name: nomad
+    state: restarted
+    daemon_reload: yes
+    enabled: yes

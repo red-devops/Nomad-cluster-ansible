@@ -1,0 +1,35 @@
+name: "Install Nomad server on PROD"
+
+on:
+  workflow_dispatch:
+
+env:
+  ENVIRONMENT: "prod"
+
+jobs:
+  consul-server:
+    name: Ansible install nomad server
+    runs-on: [self-hosted, prod]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Download SSH key
+        run: |
+          aws s3 cp \
+          s3://red-devops-workout-recorder/post-provisioning/nomad_${{ env.ENVIRONMENT }}_key.pem \
+          nomad_${{ env.ENVIRONMENT }}_key.pem
+          chmod 600 nomad_${{ env.ENVIRONMENT }}_key.pem
+
+      - name: Run Ansible Playbook
+        run: |
+          ansible-playbook \
+          nomad.yaml \
+          -i ./inventories/${{ env.ENVIRONMENT }}/inventory_aws_ec2.yaml \
+          --private-key nomad_${{ env.ENVIRONMENT }}_key.pem 
+      
+      - name: Remove SSH key
+        if: always()
+        run: rm nomad_${{ env.ENVIRONMENT }}_key.pem -f
+        continue-on-error: true

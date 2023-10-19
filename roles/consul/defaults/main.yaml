@@ -1,0 +1,4 @@
+---
+# Defaults for consul agent
+consul_token_description_for_server: "Token for Consul agent on Nomad Server"
+consul_token_description_for_client: "Token for Consul agent on Nomad Client"

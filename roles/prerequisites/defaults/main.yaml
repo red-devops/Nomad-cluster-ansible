@@ -1,0 +1,6 @@
+---
+# Defaults for prerequisites
+packages:
+  - jq
+  - awscli
+  - unzip

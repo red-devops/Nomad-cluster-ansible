@@ -1,0 +1,17 @@
+[Unit]
+Description="HashiCorp Consul Agent"
+Documentation=https://www.consul.io/
+Requires=network-online.target
+After=network-online.target
+ 
+[Service]
+Restart=on-failure
+PermissionsStartOnly=true
+ExecStart=/bin/sh -c 'exec {{ nomad_bin_home }}/consul agent -config-file={{ nomad_config_home }}/consul_config.hcl >> {{ nomad_log_home }}/consul.log 2>&1'
+ExecReload=/bin/kill -HUP $MAINPID
+KillSignal=SIGTERM
+User={{ user }}
+Group={{ group }}
+ 
+[Install]
+WantedBy=multi-user.target

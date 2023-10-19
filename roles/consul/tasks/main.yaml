@@ -1,0 +1,86 @@
+---
+# Task file for consul
+- name: Get instance name
+  command: aws ec2 describe-instances --region {{ region }} --filters "Name=private-ip-address,Values={{ private_ip_address }}" --query 'Reservations[].Instances[].Tags[?Key==`Name`].Value' --output text
+  register: instance_name_out
+  
+- name: Set instance name
+  set_fact:
+    node_name: "{{ instance_name_out.stdout }}"
+
+- name: Render script for server
+  template:
+    src: "{{ item }}"
+    dest: "{{ item }}"
+    mode: "{{ mode }}"
+  delegate_to: localhost
+  with_items:
+    - "get_keygen.sh"
+    - "get_consul_token.sh"
+  when: server | bool
+  vars:
+    token_description: "{{ consul_token_description_for_server }}"
+
+- name: Render script for client
+  template:
+    src: "{{ item }}"
+    dest: "{{ item }}"
+    mode: "{{ mode }}"
+  delegate_to: localhost
+  with_items:
+    - "get_keygen.sh"
+    - "get_consul_token.sh"
+  when: not server | bool
+  vars:
+    token_description: "{{ consul_token_description_for_client }}"
+    
+- name: Get keygen form vault
+  command: "./get_keygen.sh"
+  register: keygen_output
+  delegate_to: localhost
+
+- name: Set keygen variable
+  set_fact:
+    keygen: "{{ keygen_output.stdout | from_json | json_query('data.data.key') }}"
+
+- name: Get consul token
+  command: "./get_consul_token.sh"
+  register: consul_token_output
+  delegate_to: localhost
+
+- name: Set nomad token variable
+  set_fact:
+    consul_token: "{{ consul_token_output.stdout }}"
+
+- name: Install consul
+  unarchive:
+    src: "{{ item }}"
+    dest: "{{ nomad_bin_home }}"
+    remote_src: yes
+    owner: "{{ user }}"
+    group: "{{ group }}"
+  with_items:
+    - "https://releases.hashicorp.com/consul/1.16.0/consul_1.16.0_linux_amd64.zip"
+  
+- name: Copy configuration
+  template:
+    src: "config.hcl"
+    dest: "{{ nomad_config_home }}/consul_config.hcl"
+    owner: "{{ user }}"
+    group: "{{ group }}"
+    mode: "{{ mode }}"
+
+- name: Copy systemd consul-agent.service
+  template:
+    src: "consul-agent.service"
+    dest: "/usr/lib/systemd/system/consul-agent.service"
+    owner: "{{ user }}"
+    group: "{{ group }}"
+    mode: "{{ mode }}"
+  
+- name: Start Consul agent
+  systemd:
+    name: consul-agent
+    state: restarted
+    daemon_reload: yes
+    enabled: yes

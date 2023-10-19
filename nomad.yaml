@@ -1,0 +1,13 @@
+---
+- hosts: all
+  become: true
+  roles:
+    - name: prerequisites
+
+    - name: consul
+
+    - name: nomad-server
+      when: server | bool
+
+    - name: nomad-client
+      when: not server | bool

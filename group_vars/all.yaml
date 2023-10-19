@@ -1,0 +1,14 @@
+user: nomad
+group: nomad
+mode: u+rwx,g+r,o+r
+
+#Nomad
+nomad_home: "/home/nomad"
+nomad_data: "{{ nomad_home }}/data"
+nomad_bin_home: "{{ nomad_home }}/bin"
+nomad_config_home: "{{ nomad_home }}/config"
+nomad_log_home: "{{ nomad_home }}/log"
+nomad_port: 4646
+
+#AWS
+region: "eu-central-1"

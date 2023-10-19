@@ -1,0 +1,48 @@
+---
+- name: Update APT
+  apt:
+    upgrade: dist
+    update_cache: yes
+
+- name: Install prerequisites
+  apt:
+    name: "{{ item }}"
+    update_cache: yes
+  loop: "{{ packages }}"
+
+- name: Create group {{ group }}
+  group:
+    name: "{{ group }}"
+    state: present
+
+- name: Create user {{ user }}
+  user:
+    name: "{{ user }}"
+    group: "{{ group }}"
+    state: present
+    createhome: yes
+    home: /home/{{ user }}
+    shell: /bin/bash
+
+- name: Install Docker
+  include_role:
+    name: geerlingguy.docker
+  vars:
+    docker_users:
+      - "{{ user }}"
+  when: not server | bool
+
+- name: Create directories
+  become: true
+  file:
+    dest: "{{ item }}"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ group }}"
+    mode: "{{ mode }}"
+  with_items:
+    - "{{ nomad_home }}"
+    - "{{ nomad_data }}"
+    - "{{ nomad_bin_home }}"
+    - "{{ nomad_config_home }}"
+    - "{{ nomad_log_home }}"

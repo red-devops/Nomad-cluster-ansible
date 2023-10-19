@@ -1,0 +1,3 @@
+# Prod environment
+env: prod
+consul_bootstrap_secret_name: Consul-Global-Managemen-Token-{{ env }}

@@ -1,0 +1,4 @@
+# Dev environment
+env: dev
+consul_bootstrap_secret_name: Consul-Global-Managemen-Token-{{ env }}
+nomad_bootstrap_secret_name:  Nomad-Global-Managemen-Token-{{ env }}
